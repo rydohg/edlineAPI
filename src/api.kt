@@ -104,6 +104,7 @@ fun getGradeReport(gradeReport: GradeReport, loginCookies: Map<String, String>):
             .execute()
 }
 
+// Use when you just have the entId
 fun getGradeReport(gradeReport: String, loginCookies: Map<String, String>): Connection.Response {
     return Jsoup.connect("$EDLINE_URL/DocViewBody.page?currentDocEntid=$gradeReport&returnPage=%2FUserDocList.page")
             .cookies(loginCookies)

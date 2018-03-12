@@ -42,8 +42,8 @@ object Parser {
             val data = gradeReport.children().drop(2)
             val date = data[0].text()
             val reportName = data[1].text()
-            val classHomePageLink = data[2].getElementsByTag("a")[0].attr("href")
             val rawJavascriptLink = data[1].getElementsByTag("a")[0].attr("href")
+            val classHomePageLink = data[2].getElementsByTag("a")[0].attr("href")
 
             val javascriptLink = rawJavascriptLink
                     .substring(rawJavascriptLink.indexOf("('") + 2, rawJavascriptLink.indexOf("')"))
@@ -55,9 +55,6 @@ object Parser {
     }
 
     fun parseGradeReport(html: String): String {
-        File("report.html").bufferedWriter().use { out ->
-            out.write(html)
-        }
         return Jsoup.parse(html).getElementsByTag("pre")[0].text()
     }
 }
