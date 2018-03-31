@@ -117,6 +117,6 @@ fun getAndParseGradeReportsList(loginCookies: Map<String, String>): ArrayList<Gr
     return Parser.parseGradeReportList(getGradeReportList(loginCookies).body())
 }
 
-fun getAndParseGradeReport(gradeReport: GradeReport, loginCookies: Map<String, String>): String {
+fun getAndParseGradeReport(gradeReport: GradeReport, loginCookies: Map<String, String>): Report {
     return Parser.parseGradeReport(getGradeReport(gradeReport, loginCookies).body())
 }

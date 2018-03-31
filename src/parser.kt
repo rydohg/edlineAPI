@@ -1,12 +1,11 @@
 import org.jsoup.Jsoup
-import java.io.File
 
 object Parser {
     fun getStudentInfo(html: String): StudentInfo {
         val doc = Jsoup.parse(html)
         val myClassesUl = doc.getElementsByAttributeValue("aria-labelledby", "myEdlineMenu-myClassedAndShortcuts")[0]
 
-        val schoolName = doc.title().trimEnd(':')
+        val schoolName = doc.title().removeSuffix(": Home Page")
         val studentName = myClassesUl.child(0).getElementsByClass("ed-studentName")[0].text()
         val courses = ArrayList<Course>()
 
@@ -54,7 +53,56 @@ object Parser {
         return gradeReports
     }
 
-    fun parseGradeReport(html: String): String {
-        return Jsoup.parse(html).getElementsByTag("pre")[0].text()
+    fun parseGradeReport(html: String): Report {
+        if (isParsable(html)){
+            val rawReport = Jsoup.parse(html).getElementsByTag("pre")[0].text()
+            val inputByLine = rawReport.split("\n")
+
+            val teacherName = inputByLine[2].split("   ")[0]
+            val gradePercent = inputByLine[3].split(":")[1].split("   ")[0].removePrefix(" ")
+            val letterGrade = inputByLine[4].split(":")[1].split("   ")[0].removePrefix(" ")
+
+            val scoreInfoIndex = rawReport
+                    .substring(rawReport.indexOf("Score Information") + 19)
+
+            val startAssignmentsString = scoreInfoIndex.substring(scoreInfoIndex.indexOf("\n") + 4)
+
+            var endAssignmentIndex = 0
+            var lastLine = ""
+            for (line in startAssignmentsString.split("\n")) {
+                if (line == "\r") {
+                    endAssignmentIndex = startAssignmentsString.indexOf(lastLine) + lastLine.length + 2
+                    break
+                }
+                lastLine = line
+            }
+
+            val rawAssignmentsString = " " + startAssignmentsString.substring(0..endAssignmentIndex)
+            val assignments = ArrayList<Assignment>()
+
+            for (line in rawAssignmentsString.split("\n")) {
+                if (line != "" && line != "\r") {
+                    val noPrefix = line.substring(11)
+
+                    val name = noPrefix.substring(0..8)
+                    val date = noPrefix.substring(9..16)
+                    val category = noPrefix.substring(18..24)
+                    val pointsEarned = noPrefix.substring(37..41)
+                    val outOf = noPrefix.substring(46..48)
+                    val letter = noPrefix.substring(noPrefix.length - 2)
+
+                    assignments.add(Assignment(name, date, category, pointsEarned, outOf, letter))
+                }
+            }
+
+            return ParsedGradeReport(true, teacherName, gradePercent, letterGrade, assignments)
+        } else {
+            return NotParsedGradeReport(false, html)
+        }
     }
+
+    fun isParsable(report: String): Boolean {
+        return report.contains("Score Information")
+    }
+
 }
