@@ -1,6 +1,9 @@
 import org.jsoup.Connection
 
 import org.jsoup.Jsoup
+import java.text.SimpleDateFormat
+import java.util.*
+
 const val EDLINE_URL = "https://www.edline.net"
 
 fun login(username: String, password: String): LoginResponse {
@@ -96,7 +99,16 @@ fun getGradeReportList(loginCookies: Map<String, String>): Connection.Response {
             .execute()
 }
 
-fun getGradeReport(gradeReport: GradeReport, loginCookies: Map<String, String>): Connection.Response {
+fun getGradeReportListWithVusr(loginCookies: Map<String, String>, vusr: String): Connection.Response {
+    return Jsoup.connect("$EDLINE_URL/UserDocList.page?vusr=$vusr")
+            .cookies(loginCookies)
+            .userAgent("Chrome/63.0.3239.108")
+            .method(Connection.Method.POST)
+            .timeout(0)
+            .execute()
+}
+
+fun getGradeReport(gradeReport: NotParsedGradeReport, loginCookies: Map<String, String>): Connection.Response {
     return Jsoup.connect("$EDLINE_URL/DocViewBody.page?currentDocEntid=${gradeReport.javascriptLink}&returnPage=%2FUserDocList.page")
             .cookies(loginCookies)
             .userAgent("Chrome/63.0.3239.108")
@@ -113,10 +125,49 @@ fun getGradeReport(gradeReport: String, loginCookies: Map<String, String>): Conn
             .execute()
 }
 
-fun getAndParseGradeReportsList(loginCookies: Map<String, String>): ArrayList<GradeReport> {
-    return Parser.parseGradeReportList(getGradeReportList(loginCookies).body())
+fun getAndParseRecentGradeReports(rawReports: ArrayList<NotParsedGradeReport>, loginCookies: Map<String, String>): ArrayList<ParsedGradeReport>{
+    val parsedGradeReports = ArrayList<ParsedGradeReport>()
+    val currentDate = Date()
+    val c = Calendar.getInstance()
+    c.time = currentDate
+    c.add(Calendar.MONTH, -3)
+
+    for (report in rawReports){
+        val df = SimpleDateFormat("MM/dd/yy", Locale.US)
+        val date = df.parse(report.date)
+        if (date.after(c.time)){
+            parsedGradeReports.add(getAndParseGradeReport(report, loginCookies))
+        }
+    }
+
+    return parsedGradeReports
 }
 
-fun getAndParseGradeReport(gradeReport: GradeReport, loginCookies: Map<String, String>): Report {
-    return Parser.parseGradeReport(getGradeReport(gradeReport, loginCookies).body())
+fun getAndParseGradeReportsList(loginCookies: Map<String, String>): ArrayList<NotParsedGradeReport> {
+    return Parser.parseGradeReportList(getGradeReportList(loginCookies).body(), loginCookies)
+}
+
+fun getAndParseGradeReportsListWithVusr(loginCookies: Map<String, String>, vusr: String): ArrayList<NotParsedGradeReport> {
+    return Parser.parseGradeReportList(getGradeReportListWithVusr(loginCookies, vusr).body(), loginCookies)
+}
+
+fun getAndParseGradeReport(gradeReport: NotParsedGradeReport, loginCookies: Map<String, String>): ParsedGradeReport {
+    return Parser.parseGradeReport(getGradeReport(gradeReport, loginCookies).body(), gradeReport)
+}
+
+fun getRecentReports(reports: ArrayList<NotParsedGradeReport>): ArrayList<NotParsedGradeReport>{
+    val recentReports = ArrayList<NotParsedGradeReport>()
+    val currentDate = Date()
+    val c = Calendar.getInstance()
+    c.time = currentDate
+    c.add(Calendar.MONTH, -3)
+
+    for (report in reports){
+        val df = SimpleDateFormat("MM/dd/yy", Locale.US)
+        val date = df.parse(report.date)
+        if (date.after(c.time)){
+            recentReports.add(report)
+        }
+    }
+    return recentReports
 }

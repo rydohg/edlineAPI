@@ -23,14 +23,19 @@ fun main(args: Array<String>) {
 
     /*val testReport = getAndParseGradeReport(gradeReports[0], loginResponse.loginCookies)
     File("report.html").bufferedWriter().use { out ->
-        out.write(testReport)
+        out.write(testReport.rawReport)
     }*/
 
-    val report = getAndParseGradeReport(gradeReports[6], loginResponse.loginCookies)
+    val report = getAndParseGradeReport(gradeReports[0], loginResponse.loginCookies)
     if (report.parsable) {
-        val assignments = (report as ParsedGradeReport).assignments
+        val assignments = report.assignments
         for (assignment in assignments){
             println("${assignment.name}: ${assignment.pointsEarned}/ ${assignment.outOf}")
+        }
+    } else {
+        print(report.rawReport)
+        File("report.html").bufferedWriter().use { out ->
+            out.write(report.rawReport)
         }
     }
 
