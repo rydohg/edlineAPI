@@ -9,8 +9,10 @@ object Parser {
         val studentName = myClassesUl.getElementsByClass("ed-studentName").last().text()
         val courses = ArrayList<Course>()
         for (menuItem in myClassesUl.children()) {
+            if (myClassesUl.children()[0] == menuItem)
             if (menuItem.id() == "userShortcuts1") {
                 courses.clear()
+                continue
             } else if (menuItem.id() == "userShortcuts0") {
                 continue
             } else if (menuItem.id() == "myOtherGroups0") {
