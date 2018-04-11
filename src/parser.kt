@@ -76,9 +76,16 @@ object Parser {
             val rawReport = Jsoup.parse(html).getElementsByTag("pre")[0].text()
             val inputByLine = rawReport.split("\n")
 
-            val teacherName = inputByLine[2].split("   ")[0]
-            val gradePercent = inputByLine[3].split(":")[1].split("   ")[0].removePrefix(" ")
-            val letterGrade = inputByLine[4].split(":")[1].split("   ")[0].removePrefix(" ")
+            var teacherName = ""
+            var gradePercent = ""
+            var letterGrade = ""
+
+            try {
+                teacherName = inputByLine[2].split("   ")[0]
+                gradePercent = inputByLine[3].split(":")[1].split("   ")[0].removePrefix(" ")
+                letterGrade = inputByLine[4].split(":")[1].split("   ")[0].removePrefix(" ")
+            } catch (e: Exception) {
+            }
 
             val scoreInfoIndex = rawReport
                     .substring(rawReport.indexOf("Score Information") + 19)
@@ -88,49 +95,56 @@ object Parser {
             var endAssignmentIndex = 0
             var lastLine = ""
             for (line in startAssignmentsString.split("\n")) {
-                if (line == "\r") {
+                if (line == "\r" || line == "") {
                     endAssignmentIndex = startAssignmentsString.indexOf(lastLine) + lastLine.length + 2
                     break
                 }
                 lastLine = line
             }
+            if (endAssignmentIndex == 0) {
+                endAssignmentIndex = startAssignmentsString.length - 1
+            }
 
             val rawAssignmentsString = " " + startAssignmentsString.substring(0..endAssignmentIndex)
             val assignments = ArrayList<Assignment>()
 
+            var counter = 0
             for (line in rawAssignmentsString.split("\n")) {
-                if (line != "" && line != "\r") {
+                val lineWithoutSpaces = line.replace("\\s".toRegex(), "")
+                if (line != "" && line != "\r" && lineWithoutSpaces.isNotEmpty()) {
                     try {
-                        val noPrefix: String =
-                                if (line[3] != ' ') {
-                                    line.substring(3)
-                                } else if (line[9] != ' ') {
-                                    line.substring(9)
-                                } else if (line[11] != ' ') {
-                                    line.substring(11)
-                                } else if (line[12] != ' ') {
-                                    line.substring(11)
-                                } else if (line[17] != ' ') {
-                                    line.substring(17)
-                                } else if (line[18] != ' ') {
-                                    line.substring(17)
-                                } else {
-                                    break
-                                }
+                        var noPrefix = ""
+
+                        for (i in 0..(line.length - 1)) {
+                            if (line[i] != ' ') {
+                                noPrefix = line.substring(i)
+                                break
+                            }
+                        }
+
                         val name = noPrefix.substring(0..8)
                         val date = noPrefix.substring(9..16)
+                        if (counter == 0 && !date.matches("^((0?[13578]|10|12)(-|\\/)(([1-9])|(0[1-9])|([12])([0-9]?)|(3[01]?))(-|\\/)((19)([2-9])(\\d{1})|(20)([01])(\\d{1})|([8901])(\\d{1}))|(0?[2469]|11)(-|\\/)(([1-9])|(0[1-9])|([12])([0-9]?)|(3[0]?))(-|\\/)((19)([2-9])(\\d{1})|(20)([01])(\\d{1})|([8901])(\\d{1})))\$".toRegex())) {
+                            throw Exception()
+                        } else {
+                            counter += 1
+                        }
                         val category = noPrefix.substring(18..24)
                         val pointsEarned = noPrefix.substring(37..41)
-                        val outOf = noPrefix.substring(43..45)
-                        val percent = noPrefix.substring(46..49)
-                        val letter = noPrefix.substring(noPrefix.length - 2)
+                        val outOf = noPrefix.substring(42..44)
+                        var percent = "0"
+                        var letter = "F"
+                        if (noPrefix.length >= 50) {
+                            percent = noPrefix.substring((noPrefix.length - 6)..(noPrefix.length - 4))
+                            letter = noPrefix.substring(noPrefix.length - 2)
+                        }
 
                         assignments.add(Assignment(name, date, category, pointsEarned, outOf, percent, letter))
-                    } catch (e: StringIndexOutOfBoundsException) {
+                    } catch (e: Exception) {
                         e.printStackTrace()
                         return ParsedGradeReport(
                                 parsable = false,
-                                rawReport = rawReport,
+                                rawReport = Jsoup.parse(html).getElementsByTag("pre")[0].text(),
                                 date = rawGradeReport.date,
                                 reportName = rawGradeReport.reportName,
                                 classLink = rawGradeReport.classLink
@@ -138,7 +152,6 @@ object Parser {
                     }
                 }
             }
-
             return ParsedGradeReport(
                     parsable = true,
                     date = rawGradeReport.date,
