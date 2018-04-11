@@ -181,6 +181,10 @@ object Parser {
                     assignments.add(Assignment(name, date, category, pointsEarned, outOf, percent, letter))
                 } catch (e: Exception) {
                     e.printStackTrace()
+
+                    // Marks it as unparsable
+                    assignments.clear()
+                    return assignments
                 }
             }
         }
