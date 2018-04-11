@@ -96,7 +96,7 @@ object Parser {
                         date = rawGradeReport.date,
                         reportName = rawGradeReport.reportName,
                         classLink = rawGradeReport.classLink,
-                        rawReport = rawReport,
+                        rawReport = html,
                         teacher = teacherName,
                         overallGrade = gradePercent,
                         letterGradeReport = letterGrade,
@@ -105,16 +105,17 @@ object Parser {
             } else {
                 return ParsedGradeReport(
                         parsable = false,
-                        rawReport = rawReport,
+                        rawReport = html,
                         date = rawGradeReport.date,
                         reportName = rawGradeReport.reportName,
                         classLink = rawGradeReport.classLink
                 )
             }
         } else {
+            //TODO: Replace rawReport
             return ParsedGradeReport(
                     parsable = false,
-                    rawReport = Jsoup.parse(html).getElementsByTag("pre")[0].text(),
+                    rawReport = html,
                     date = rawGradeReport.date,
                     reportName = rawGradeReport.reportName,
                     classLink = rawGradeReport.classLink
@@ -169,14 +170,15 @@ object Parser {
                         counter += 1
                     }
                     val category = noPrefix.substring(18..24)
-                    val pointsEarned = noPrefix.substring(37..41)
-                    val outOf = noPrefix.substring(42..44)
-                    var percent = "0"
-                    var letter = "F"
-                    if (noPrefix.length >= 50) {
-                        percent = noPrefix.substring((noPrefix.length - 6)..(noPrefix.length - 4))
-                        letter = noPrefix.substring(noPrefix.length - 2)
-                    }
+
+                    val reversedLine = noPrefix.reversed()
+                    println(reversedLine)
+                    val letter = reversedLine.substring(1..1)
+                    val percent = reversedLine.substring( 3..5).reversed()
+
+                    val pointsEarned = reversedLine.substring(7..9).reversed()
+                    val outOf = reversedLine.substring(11..13).reversed()
+                    println("Letter; $letter Percent: $percent Earned: $pointsEarned Out of: $outOf")
 
                     assignments.add(Assignment(name, date, category, pointsEarned, outOf, percent, letter))
                 } catch (e: Exception) {
