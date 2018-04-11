@@ -39,7 +39,7 @@ object Parser {
                 .getElementsByTag("tbody")[0]
                 .children()
         val gradeReports = ArrayList<NotParsedGradeReport>()
-        if (gradeReportsTable.html().contains("No items found.")){
+        if (gradeReportsTable.html().contains("No items found.")) {
             println("No Reports")
             println("HTML:" + doc.getElementById("vusrList").html())
             val vusrTable = doc
@@ -84,84 +84,33 @@ object Parser {
                 teacherName = inputByLine[2].split("   ")[0]
                 gradePercent = inputByLine[3].split(":")[1].split("   ")[0].removePrefix(" ")
                 letterGrade = inputByLine[4].split(":")[1].split("   ")[0].removePrefix(" ")
-            } catch (e: Exception) {
+            } catch (e: Exception) {}
+
+            val rawAssignmentsString = getAssignmentsString(rawReport)
+            val assignments = parseAssignments(rawAssignmentsString)
+
+            //If it is really parsable
+            if (assignments.size != 0) {
+                return ParsedGradeReport(
+                        parsable = true,
+                        date = rawGradeReport.date,
+                        reportName = rawGradeReport.reportName,
+                        classLink = rawGradeReport.classLink,
+                        rawReport = rawReport,
+                        teacher = teacherName,
+                        overallGrade = gradePercent,
+                        letterGradeReport = letterGrade,
+                        assignments = assignments
+                )
+            } else {
+                return ParsedGradeReport(
+                        parsable = false,
+                        rawReport = rawReport,
+                        date = rawGradeReport.date,
+                        reportName = rawGradeReport.reportName,
+                        classLink = rawGradeReport.classLink
+                )
             }
-
-            val scoreInfoIndex = rawReport
-                    .substring(rawReport.indexOf("Score Information") + 19)
-
-            val startAssignmentsString = scoreInfoIndex.substring(scoreInfoIndex.indexOf("\n") + 4)
-
-            var endAssignmentIndex = 0
-            var lastLine = ""
-            for (line in startAssignmentsString.split("\n")) {
-                if (line == "\r" || line == "") {
-                    endAssignmentIndex = startAssignmentsString.indexOf(lastLine) + lastLine.length + 2
-                    break
-                }
-                lastLine = line
-            }
-            if (endAssignmentIndex == 0) {
-                endAssignmentIndex = startAssignmentsString.length - 1
-            }
-
-            val rawAssignmentsString = " " + startAssignmentsString.substring(0..endAssignmentIndex)
-            val assignments = ArrayList<Assignment>()
-
-            var counter = 0
-            for (line in rawAssignmentsString.split("\n")) {
-                val lineWithoutSpaces = line.replace("\\s".toRegex(), "")
-                if (line != "" && line != "\r" && lineWithoutSpaces.isNotEmpty()) {
-                    try {
-                        var noPrefix = ""
-
-                        for (i in 0..(line.length - 1)) {
-                            if (line[i] != ' ') {
-                                noPrefix = line.substring(i)
-                                break
-                            }
-                        }
-
-                        val name = noPrefix.substring(0..8)
-                        val date = noPrefix.substring(9..16)
-                        if (counter == 0 && !date.matches("^((0?[13578]|10|12)(-|\\/)(([1-9])|(0[1-9])|([12])([0-9]?)|(3[01]?))(-|\\/)((19)([2-9])(\\d{1})|(20)([01])(\\d{1})|([8901])(\\d{1}))|(0?[2469]|11)(-|\\/)(([1-9])|(0[1-9])|([12])([0-9]?)|(3[0]?))(-|\\/)((19)([2-9])(\\d{1})|(20)([01])(\\d{1})|([8901])(\\d{1})))\$".toRegex())) {
-                            throw Exception()
-                        } else {
-                            counter += 1
-                        }
-                        val category = noPrefix.substring(18..24)
-                        val pointsEarned = noPrefix.substring(37..41)
-                        val outOf = noPrefix.substring(42..44)
-                        var percent = "0"
-                        var letter = "F"
-                        if (noPrefix.length >= 50) {
-                            percent = noPrefix.substring((noPrefix.length - 6)..(noPrefix.length - 4))
-                            letter = noPrefix.substring(noPrefix.length - 2)
-                        }
-
-                        assignments.add(Assignment(name, date, category, pointsEarned, outOf, percent, letter))
-                    } catch (e: Exception) {
-                        e.printStackTrace()
-                        return ParsedGradeReport(
-                                parsable = false,
-                                rawReport = Jsoup.parse(html).getElementsByTag("pre")[0].text(),
-                                date = rawGradeReport.date,
-                                reportName = rawGradeReport.reportName,
-                                classLink = rawGradeReport.classLink
-                        )
-                    }
-                }
-            }
-            return ParsedGradeReport(
-                    parsable = true,
-                    date = rawGradeReport.date,
-                    reportName = rawGradeReport.reportName,
-                    classLink = rawGradeReport.classLink,
-                    teacher = teacherName,
-                    overallGrade = gradePercent,
-                    letterGradeReport = letterGrade,
-                    assignments = assignments
-            )
         } else {
             return ParsedGradeReport(
                     parsable = false,
@@ -171,6 +120,72 @@ object Parser {
                     classLink = rawGradeReport.classLink
             )
         }
+    }
+
+    private fun getAssignmentsString(rawReport: String): String {
+        val scoreInfoIndex = rawReport
+                .substring(rawReport.indexOf("Score Information") + 19)
+
+        val startAssignmentsString = scoreInfoIndex.substring(scoreInfoIndex.indexOf("\n") + 4)
+
+        var endAssignmentIndex = 0
+        var lastLine = ""
+        for (line in startAssignmentsString.split("\n")) {
+            if (line == "\r" || line == "") {
+                endAssignmentIndex = startAssignmentsString.indexOf(lastLine) + lastLine.length + 2
+                break
+            }
+            lastLine = line
+        }
+        if (endAssignmentIndex == 0) {
+            endAssignmentIndex = startAssignmentsString.length - 1
+        }
+
+        return " " + startAssignmentsString.substring(0..endAssignmentIndex)
+    }
+
+    private fun parseAssignments(assignmentsString: String): ArrayList<Assignment> {
+        val assignments = ArrayList<Assignment>()
+
+        var counter = 0
+        for (line in assignmentsString.split("\n")) {
+            val lineWithoutSpaces = line.replace("\\s".toRegex(), "")
+            if (line != "" && line != "\r" && lineWithoutSpaces.isNotEmpty()) {
+                try {
+                    var noPrefix = ""
+
+                    for (i in 0..(line.length - 1)) {
+                        if (line[i] != ' ') {
+                            noPrefix = line.substring(i)
+                            break
+                        }
+                    }
+
+                    val name = noPrefix.substring(0..8)
+                    val date = noPrefix.substring(9..16)
+                    if (counter == 0 && !date.matches("^((0?[13578]|10|12)(-|\\/)(([1-9])|(0[1-9])|([12])([0-9]?)|(3[01]?))(-|\\/)((19)([2-9])(\\d{1})|(20)([01])(\\d{1})|([8901])(\\d{1}))|(0?[2469]|11)(-|\\/)(([1-9])|(0[1-9])|([12])([0-9]?)|(3[0]?))(-|\\/)((19)([2-9])(\\d{1})|(20)([01])(\\d{1})|([8901])(\\d{1})))\$".toRegex())) {
+                        throw Exception()
+                    } else {
+                        counter += 1
+                    }
+                    val category = noPrefix.substring(18..24)
+                    val pointsEarned = noPrefix.substring(37..41)
+                    val outOf = noPrefix.substring(42..44)
+                    var percent = "0"
+                    var letter = "F"
+                    if (noPrefix.length >= 50) {
+                        percent = noPrefix.substring((noPrefix.length - 6)..(noPrefix.length - 4))
+                        letter = noPrefix.substring(noPrefix.length - 2)
+                    }
+
+                    assignments.add(Assignment(name, date, category, pointsEarned, outOf, percent, letter))
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                }
+            }
+        }
+
+        return assignments
     }
 
     fun isParsable(report: String): Boolean {

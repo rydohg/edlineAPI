@@ -39,4 +39,13 @@ fun main(args: Array<String>) {
         }
     }
 
+    getRawReports(loginResponse.loginCookies, gradeReports)
+}
+
+fun getRawReports(loginCookies: Map<String, String>, gradeReports: ArrayList<NotParsedGradeReport>){
+    for (i in 0..5){
+        File("report$i.html").bufferedWriter().use {
+            it.write(getAndParseGradeReport(gradeReports[i], loginCookies).rawReport)
+        }
+    }
 }
